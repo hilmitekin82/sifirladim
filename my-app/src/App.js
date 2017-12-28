@@ -5,29 +5,38 @@ import './App.css';
 class Tile extends React.Component {
   constructor(props) {
     super(props);
-    this.state = { btsBt:1 , btsPr:1, krkPr:1, bfnPr:1, krkBt:1 , bfnBt:1 };  
+    this.state = { btsBt:1 , btsPr:1, krkPr:1, bfnPr:1, krkBt:1 , bfnBt:1, krkBtEth:1 };  
   }
   
   componentDidMount() {
+    this.tickArb();
     this.tickPrice();
   }
-  
-  tickPrice() {
-    setTimeout(() => {
-      this.getUsdTRY().then(result => { 
-        this.getBtcTurkBTCTRY(result).then(ratedBtcTurk => {
+
+  tickArb() {
+    this.getUsdTRY().then(result => { 
+      this.getBtcTurkBTCTRY(result).then(ratedBtcTurk => {
+        this.getBtcTurkETHTRY(result).then(ratedBtcTurkEth => {
           this.getParibuBTCTRY(result).then(ratedParibu => {
             this.getBtsArb(ratedBtcTurk, ratedParibu).then(btsArb => {
               this.getKrkArb(ratedBtcTurk, ratedParibu).then(krkArb => {
-                this.getBfnArb(ratedBtcTurk, ratedParibu).then(bfnArb => {
-                  this.setState({ btsBt: btsArb.ab, krkBt: krkArb.ab, bfnBt: bfnArb.ab, btsPr: btsArb.ap, krkPr: krkArb.ap, bfnPr: bfnArb.ap });
+                this.getKrkArbEth(ratedBtcTurkEth, ratedBtcTurkEth).then(krkArbEth => {
+                  this.getBfnArb(ratedBtcTurk, ratedParibu).then(bfnArb => {
+                    this.setState({ btsBt: btsArb.ab, krkBt: krkArb.ab, bfnBt: bfnArb.ab, btsPr: btsArb.ap, krkPr: krkArb.ap, bfnPr: bfnArb.ap, krkBtEth: krkArbEth.ab });
+                  });
                 });
               });
             });
           });
         });
       });
-      this.tickPrice();
+    })
+  }
+  
+  tickPrice() {
+    setTimeout(() => {
+        this.tickArb();
+        this.tickPrice();
     }, 5000); //tick every 500 - 1500 ms
   }
   
@@ -49,6 +58,19 @@ class Tile extends React.Component {
       .then((response) => response.json())
       .then((responseJson) => {
         const price = responseJson.result.XXBTZUSD.a[0];
+        const result = { 'ab' : ((rateB / price) - 1) * 100, 'ap' : ((rateP / price) - 1) * 100 };  
+        return result;
+    })
+      .catch((error) => {
+      console.error(error);
+    });
+  }
+
+  getKrkArbEth(rateB, rateP) {
+    return fetch('https://cors-anywhere.herokuapp.com/'+'https://api.kraken.com/0/public/Ticker?pair=ETHUSD')
+      .then((response) => response.json())
+      .then((responseJson) => {
+        const price = responseJson.result.XETHZUSD.a[0];
         const result = { 'ab' : ((rateB / price) - 1) * 100, 'ap' : ((rateP / price) - 1) * 100 };  
         return result;
     })
@@ -101,6 +123,17 @@ class Tile extends React.Component {
     });
   }
 
+  getBtcTurkETHTRY(rate) {
+    return fetch('https://www.btcturk.com/api/ticker?pairSymbol=ETHTRY')
+      .then((response) => response.json())
+      .then((responseJson) => {
+      return responseJson.bid / rate;
+    })
+      .catch((error) => {
+      console.error(error);
+    });
+  }
+
   getUsdTRY() {
     return fetch('https://api.fixer.io/latest?base=USD&from=TRY&to=TRY')
       .then((response) => response.json())
@@ -137,6 +170,12 @@ class Tile extends React.Component {
           </div>
           <div class="col-sm">
             Bitfinex-Paribu: {this.state.bfnPr}
+          </div>
+        </div>
+        <br />
+        <div class="row">
+          <div class="col-sm">
+            Kraken-BtcTurk ETH: {this.state.krkBtEth}
           </div>
         </div>
       </div>
